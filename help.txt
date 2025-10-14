@@ -1,0 +1,61 @@
+#SQL Database Backup Work From Root
+PGPASSWORD='PR3f9m602' pg_dump -U spf_user -d smart_process_flow > smart_process_flow_backup.sql 
+
+Make user as admin
+
+UPDATE users
+SET is_admin = true,
+    status = 'active',
+    email_verified = true,
+    updated_at = now()
+WHERE email = 'izaz.sub@gmail.com';
+
+
+#Restore Database Work From Root
+psql -U spf_user -d smart_process_flow -f smart_process_flow_backup.sql 
+
+# Login as postgres superuser
+sudo -u postgres psql
+# Drop old database
+DROP DATABASE smart_process_flow;
+# Create Database & User
+CREATE DATABASE smart_process_flow;
+CREATE USER spf_user WITH ENCRYPTED PASSWORD 'PR3f9m602';
+GRANT ALL PRIVILEGES ON DATABASE smart_process_flow TO spf_user;
+
+# GO Database from ROOT-----
+psql -U spf_user -d smart_process_flow
+# Exit
+\q
+
+
+# install PostgreSQL
+sudo apt update && sudo apt upgrade -y
+sudo apt install postgresql postgresql-contrib -y
+
+# Restart PostgreSQL
+sudo systemctl restart postgresql
+# Check Status
+sudo systemctl status postgresql
+
+# Build frontend
+npm run build
+
+# Restart backend
+pm2 restart smart-process-flow-backend
+
+pm2 stop smart-process-flow-backend
+
+
+# Check status
+sudo systemctl status nginx
+
+# Restart Nginx
+sudo systemctl restart nginx
+
+#Run the database setup script: 
+npm run db:setup
+
+#Start your application: 
+npm run dev:full
+node cleanup-cron.js
