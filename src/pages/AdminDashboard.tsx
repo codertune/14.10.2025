@@ -3,6 +3,7 @@ import { Users, Settings, BarChart3, FileText, Plus, CreditCard as Edit, Trash2,
 import { useAuth } from '../contexts/AuthContext';
 import EnhancedUserTable from '../components/EnhancedUserTable';
 import ContactMessagesPanel from '../components/ContactMessagesPanel';
+import AdsManagementTab from '../components/AdsManagementTab';
 
 interface BlogFormData {
   title: string;
@@ -391,6 +392,7 @@ export default function AdminDashboard() {
               { id: 'services', name: 'Services', icon: Settings },
               { id: 'contact', name: 'Contact Messages', icon: Mail },
               { id: 'blog', name: 'Blog Posts', icon: FileText },
+              { id: 'ads', name: 'Ads', icon: Image },
               { id: 'system', name: 'System', icon: BarChart3 }
             ].map(tab => {
               const Icon = tab.icon;
@@ -875,6 +877,11 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Ads Tab */}
+        {activeTab === 'ads' && (
+          <AdsManagementTab />
         )}
 
         {/* System Tab */}

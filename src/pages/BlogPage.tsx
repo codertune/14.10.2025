@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Calendar, User, ArrowLeft, Search, Tag, Clock, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import AdSenseAd from '../components/AdSenseAd';
 
 interface BlogPost {
   id: string;
@@ -137,6 +138,9 @@ export default function BlogPage() {
             Back to Blog
           </Link>
 
+          {/* Ad Placement - Top of Single Blog Post */}
+          <AdSenseAd placement="blog_single_top" />
+
           <article className="bg-white rounded-xl shadow-lg overflow-hidden">
             {currentPost.featuredImage && (
               <div className="relative h-64 md:h-80 overflow-hidden">
@@ -241,6 +245,9 @@ export default function BlogPage() {
               }} />
             </div>
           </article>
+
+          {/* Ad Placement - Bottom of Single Blog Post */}
+          <AdSenseAd placement="blog_single_bottom" />
         </div>
       </div>
     );
@@ -290,6 +297,11 @@ export default function BlogPage() {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Ad Placement - Top of Blog Listing */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AdSenseAd placement="blog_listing_top" />
         </div>
 
         {/* Global styles for blog content */}
@@ -462,6 +474,9 @@ export default function BlogPage() {
             ))}
           </div>
         )}
+
+        {/* Ad Placement - Bottom of Blog Listing */}
+        <AdSenseAd placement="blog_listing_bottom" />
       </div>
     </div>
   );

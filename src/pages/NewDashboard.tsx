@@ -13,6 +13,7 @@ import ChangePasswordModal from '../components/ChangePasswordModal';
 import CreditHistoryTab from '../components/CreditHistoryTab';
 import PortalCredentialsManager from '../components/PortalCredentialsManager';
 import PortalCredentialsModal from '../components/PortalCredentialsModal';
+import AdSenseAd from '../components/AdSenseAd';
 import axios from 'axios';
 
 interface Service {
@@ -497,6 +498,9 @@ export default function NewDashboard() {
               </div>
             </div>
 
+            {/* First Ad Placement - After Stats */}
+            <AdSenseAd placement="dashboard_after_stats" />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="mb-6">
@@ -619,6 +623,11 @@ export default function NewDashboard() {
                               </>
                             )}
                           </button>
+
+                          {/* Second Ad Placement - After Button */}
+                          <div className="mt-6">
+                            <AdSenseAd placement="dashboard_after_button" />
+                          </div>
 
                           {currentJob && (
                             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">

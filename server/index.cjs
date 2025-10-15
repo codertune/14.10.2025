@@ -1447,6 +1447,111 @@ app.post('/api/track-container', async (req, res) => {
   }
 });
 
+// Ads Settings API Endpoints
+app.get('/api/ads/settings', async (req, res) => {
+  try {
+    const settings = await DatabaseService.getAdsSettings();
+    res.json({
+      success: true,
+      settings
+    });
+  } catch (error) {
+    console.error('Get ads settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch ads settings'
+    });
+  }
+});
+
+app.get('/api/ads/settings/:location', async (req, res) => {
+  try {
+    const { location } = req.params;
+    const setting = await DatabaseService.getAdSettingByLocation(location);
+
+    if (!setting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ad setting not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      setting
+    });
+  } catch (error) {
+    console.error('Get ad setting error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch ad setting'
+    });
+  }
+});
+
+app.put('/api/ads/settings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Validate admin access (simple check - you can enhance this)
+    const { userId } = req.body;
+    if (userId) {
+      const user = await DatabaseService.getUserById(userId);
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+    }
+
+    await DatabaseService.updateAdSetting(id, updates);
+
+    res.json({
+      success: true,
+      message: 'Ad setting updated successfully'
+    });
+  } catch (error) {
+    console.error('Update ad setting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update ad setting'
+    });
+  }
+});
+
+app.patch('/api/ads/toggle/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled, userId } = req.body;
+
+    // Validate admin access
+    if (userId) {
+      const user = await DatabaseService.getUserById(userId);
+      if (!user || !user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+    }
+
+    await DatabaseService.toggleAdSetting(id, enabled);
+
+    res.json({
+      success: true,
+      message: `Ad ${enabled ? 'enabled' : 'disabled'} successfully`
+    });
+  } catch (error) {
+    console.error('Toggle ad setting error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to toggle ad setting'
+    });
+  }
+});
+
 function getServiceName(serviceId) {
   const names = {
     'damco-tracking-maersk': 'Damco (APM) Tracking',

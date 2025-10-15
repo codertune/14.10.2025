@@ -2251,6 +2251,93 @@ const DatabaseService = {
       console.error('❌ Error updating notification preferences:', error);
       throw error;
     }
+  },
+
+  // Ads Settings Methods
+  async getAdsSettings() {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM ads_settings ORDER BY page_name, placement_location`
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Error fetching ads settings:', error);
+      throw error;
+    }
+  },
+
+  async getAdSettingByLocation(location) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM ads_settings WHERE placement_location = $1`,
+        [location]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('❌ Error fetching ad setting by location:', error);
+      throw error;
+    }
+  },
+
+  async updateAdSetting(id, updates) {
+    try {
+      const fields = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (updates.ad_client_id !== undefined) {
+        fields.push(`ad_client_id = $${paramCount++}`);
+        values.push(updates.ad_client_id);
+      }
+      if (updates.ad_slot_id !== undefined) {
+        fields.push(`ad_slot_id = $${paramCount++}`);
+        values.push(updates.ad_slot_id);
+      }
+      if (updates.ad_format !== undefined) {
+        fields.push(`ad_format = $${paramCount++}`);
+        values.push(updates.ad_format);
+      }
+      if (updates.full_width_responsive !== undefined) {
+        fields.push(`full_width_responsive = $${paramCount++}`);
+        values.push(updates.full_width_responsive);
+      }
+      if (updates.enabled !== undefined) {
+        fields.push(`enabled = $${paramCount++}`);
+        values.push(updates.enabled);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      values.push(id);
+
+      const result = await pool.query(
+        `UPDATE ads_settings SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramCount} RETURNING *`,
+        values
+      );
+
+      console.log(`✅ Updated ad setting ${id}`);
+      return result.rows[0];
+    } catch (error) {
+      console.error('❌ Error updating ad setting:', error);
+      throw error;
+    }
+  },
+
+  async toggleAdSetting(id, enabled) {
+    try {
+      const result = await pool.query(
+        `UPDATE ads_settings SET enabled = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+        [enabled, id]
+      );
+
+      console.log(`✅ Toggled ad setting ${id} to ${enabled}`);
+      return result.rows[0];
+    } catch (error) {
+      console.error('❌ Error toggling ad setting:', error);
+      throw error;
+    }
   }
 };
 
