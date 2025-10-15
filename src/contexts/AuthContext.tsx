@@ -616,10 +616,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateSystemNotification = (notification: CreditSettings['systemNotification']) => {
-    setCreditSettings(prev => ({
-      ...prev,
-      systemNotification: notification
-    }));
+    updateCreditSettings({ systemNotification: notification });
   };
   const addCredits = (userId: string, credits: number) => {
     console.log(`Adding ${credits} credits to user ${userId}`);

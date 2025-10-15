@@ -529,6 +529,19 @@ const DatabaseService = {
       const hasSettings = parseInt(existingResult.rows[0].count) > 0;
 
       if (hasSettings) {
+        // Get current settings first to merge with updates
+        const currentSettings = await this.getSystemSettings();
+
+        // Merge current settings with updates
+        const mergedSettings = {
+          creditsPerBDT: settings.creditsPerBDT !== undefined ? settings.creditsPerBDT : currentSettings.creditsPerBDT,
+          freeTrialCredits: settings.freeTrialCredits !== undefined ? settings.freeTrialCredits : currentSettings.freeTrialCredits,
+          minPurchaseCredits: settings.minPurchaseCredits !== undefined ? settings.minPurchaseCredits : currentSettings.minPurchaseCredits,
+          enabledServices: settings.enabledServices !== undefined ? settings.enabledServices : currentSettings.enabledServices,
+          serviceCreditsConfig: settings.serviceCreditsConfig !== undefined ? settings.serviceCreditsConfig : currentSettings.serviceCreditsConfig,
+          systemNotification: settings.systemNotification !== undefined ? settings.systemNotification : currentSettings.systemNotification
+        };
+
         // Update existing settings
         await pool.query(
           `UPDATE system_settings SET
@@ -541,16 +554,16 @@ const DatabaseService = {
             updated_at = NOW()
           WHERE id = (SELECT id FROM system_settings ORDER BY created_at DESC LIMIT 1)`,
           [
-            settings.creditsPerBDT || 2.0,
-            settings.freeTrialCredits || 100,
-            settings.minPurchaseCredits || 200,
-            JSON.stringify(settings.enabledServices || []),
-            JSON.stringify(settings.serviceCreditsConfig || {}),
-            JSON.stringify(settings.systemNotification || {})
+            mergedSettings.creditsPerBDT,
+            mergedSettings.freeTrialCredits,
+            mergedSettings.minPurchaseCredits,
+            JSON.stringify(mergedSettings.enabledServices),
+            JSON.stringify(mergedSettings.serviceCreditsConfig),
+            JSON.stringify(mergedSettings.systemNotification)
           ]
         );
       } else {
-        // Insert new settings
+        // Insert new settings with defaults
         await pool.query(
           `INSERT INTO system_settings (
             credits_per_bdt, free_trial_credits,
@@ -562,7 +575,7 @@ const DatabaseService = {
             settings.minPurchaseCredits || 200,
             JSON.stringify(settings.enabledServices || []),
             JSON.stringify(settings.serviceCreditsConfig || {}),
-            JSON.stringify(settings.systemNotification || {})
+            JSON.stringify(settings.systemNotification || { enabled: false, message: '', type: 'info', showToAll: true })
           ]
         );
       }
