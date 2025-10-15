@@ -19,8 +19,12 @@ import {
   Trash2,
   ShieldCheck,
   ShieldAlert,
-  Users
+  Users,
+  Receipt,
+  History
 } from 'lucide-react';
+import TransactionHistory from './TransactionHistory';
+import CreditHistoryTab from './CreditHistoryTab';
 
 interface User {
   id: string;
@@ -72,8 +76,17 @@ export default function EnhancedUserTable({
   setFilterVerification
 }: EnhancedUserTableProps) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<{[key: string]: string}>({});
   const [verifyingEmail, setVerifyingEmail] = useState<string | null>(null);
   const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+
+  const handleTabChange = (userId: string, tab: string) => {
+    setActiveTab(prev => ({ ...prev, [userId]: tab }));
+  };
+
+  const getCurrentTab = (userId: string) => {
+    return activeTab[userId] || 'account';
+  };
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
@@ -381,115 +394,173 @@ export default function EnhancedUserTable({
                 {/* Expanded Details Row */}
                 {expandedUserId === user.id && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-4 bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Account Information */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            Account Information
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">User ID:</span>
-                              <span className="text-gray-900 font-mono text-xs">{user.id.substring(0, 8)}...</span>
+                    <td colSpan={10} className="px-4 py-6 bg-gray-50">
+                      {/* Tab Navigation */}
+                      <div className="mb-6">
+                        <div className="border-b border-gray-200">
+                          <nav className="-mb-px flex space-x-6">
+                            <button
+                              onClick={() => handleTabChange(user.id, 'account')}
+                              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors ${
+                                getCurrentTab(user.id) === 'account'
+                                  ? 'border-blue-500 text-blue-600'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Account Information
+                            </button>
+                            <button
+                              onClick={() => handleTabChange(user.id, 'transactions')}
+                              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors ${
+                                getCurrentTab(user.id) === 'transactions'
+                                  ? 'border-blue-500 text-blue-600'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              <Receipt className="h-4 w-4 mr-2" />
+                              Transaction History
+                            </button>
+                            <button
+                              onClick={() => handleTabChange(user.id, 'credits')}
+                              className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors ${
+                                getCurrentTab(user.id) === 'credits'
+                                  ? 'border-blue-500 text-blue-600'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              Credit History
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
+
+                      {/* Tab Content */}
+                      <div className="mt-4">
+                        {getCurrentTab(user.id) === 'account' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Account Information */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Account Information
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">User ID:</span>
+                                  <span className="text-gray-900 font-mono text-xs">{user.id.substring(0, 8)}...</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Created:</span>
+                                  <span className="text-gray-900">{formatDate(user.createdAt)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Last Updated:</span>
+                                  <span className="text-gray-900">{formatDate(user.updatedAt)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Last Activity:</span>
+                                  <span className="text-gray-900">{getRelativeTime(user.lastActivity)}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Created:</span>
-                              <span className="text-gray-900">{formatDate(user.createdAt)}</span>
+
+                            {/* Billing & Credits */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Billing & Credits
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Current Credits:</span>
+                                  <span className="text-gray-900 font-semibold">{user.isAdmin ? '∞' : user.credits}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Total Spent:</span>
+                                  <span className="text-gray-900 font-semibold">৳{user.totalSpent || 0}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Trial Ends:</span>
+                                  <span className="text-gray-900">{formatDate(user.trialEndsAt)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Member Since:</span>
+                                  <span className="text-gray-900">{formatDate(user.memberSince)}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Last Updated:</span>
-                              <span className="text-gray-900">{formatDate(user.updatedAt)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Last Activity:</span>
-                              <span className="text-gray-900">{getRelativeTime(user.lastActivity)}</span>
+
+                            {/* Email Verification & Actions */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                <Mail className="h-4 w-4 mr-2" />
+                                Email Management
+                              </h4>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-gray-500">Email Status:</span>
+                                  {user.emailVerified ? (
+                                    <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Verified
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Unverified
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-gray-200">
+                                  {!user.emailVerified && (
+                                    <button
+                                      onClick={() => handleManualVerifyEmail(user.id, user.email)}
+                                      disabled={verifyingEmail === user.id}
+                                      className="w-full px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    >
+                                      <UserCheck className="h-4 w-4 mr-1" />
+                                      {verifyingEmail === user.id ? 'Verifying...' : 'Verify Email Manually'}
+                                    </button>
+                                  )}
+
+                                  {!user.emailVerified && (
+                                    <button
+                                      onClick={() => handleResendVerificationEmail(user.id, user.email)}
+                                      disabled={resendingEmail === user.id}
+                                      className="w-full px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    >
+                                      <Send className="h-4 w-4 mr-1" />
+                                      {resendingEmail === user.id ? 'Sending...' : 'Resend Verification'}
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => handleManualPasswordReset(user.id, user.email)}
+                                    className="w-full px-3 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center"
+                                  >
+                                    <Key className="h-4 w-4 mr-1" />
+                                    Send Password Reset
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
-                        {/* Billing & Credits */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            Billing & Credits
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Current Credits:</span>
-                              <span className="text-gray-900 font-semibold">{user.isAdmin ? '∞' : user.credits}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Total Spent:</span>
-                              <span className="text-gray-900 font-semibold">৳{user.totalSpent || 0}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Trial Ends:</span>
-                              <span className="text-gray-900">{formatDate(user.trialEndsAt)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Member Since:</span>
-                              <span className="text-gray-900">{formatDate(user.memberSince)}</span>
-                            </div>
+                        {getCurrentTab(user.id) === 'transactions' && (
+                          <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <TransactionHistory userId={user.id} />
                           </div>
-                        </div>
+                        )}
 
-                        {/* Email Verification & Actions */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200">
-                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                            <Mail className="h-4 w-4 mr-2" />
-                            Email Management
-                          </h4>
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-500">Email Status:</span>
-                              {user.emailVerified ? (
-                                <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Verified
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Unverified
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="space-y-2 pt-2 border-t border-gray-200">
-                              {!user.emailVerified && (
-                                <button
-                                  onClick={() => handleManualVerifyEmail(user.id, user.email)}
-                                  disabled={verifyingEmail === user.id}
-                                  className="w-full px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  <UserCheck className="h-4 w-4 mr-1" />
-                                  {verifyingEmail === user.id ? 'Verifying...' : 'Verify Email Manually'}
-                                </button>
-                              )}
-
-                              {!user.emailVerified && (
-                                <button
-                                  onClick={() => handleResendVerificationEmail(user.id, user.email)}
-                                  disabled={resendingEmail === user.id}
-                                  className="w-full px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                                >
-                                  <Send className="h-4 w-4 mr-1" />
-                                  {resendingEmail === user.id ? 'Sending...' : 'Resend Verification'}
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => handleManualPasswordReset(user.id, user.email)}
-                                className="w-full px-3 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center"
-                              >
-                                <Key className="h-4 w-4 mr-1" />
-                                Send Password Reset
-                              </button>
-                            </div>
+                        {getCurrentTab(user.id) === 'credits' && (
+                          <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <CreditHistoryTab userId={user.id} />
                           </div>
-                        </div>
+                        )}
                       </div>
                     </td>
                   </tr>
