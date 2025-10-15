@@ -11,6 +11,8 @@ interface CreditHistoryEntry {
   paymentMethod: string;
   referenceId: string;
   status: string;
+  jobId: string | null;
+  previousCredit: number;
 }
 
 interface CreditHistorySummary {
@@ -94,13 +96,15 @@ export default function CreditHistoryTab({ userId }: CreditHistoryTabProps) {
   };
 
   const handleExportCSV = () => {
-    const csvHeaders = ['Date', 'Type', 'Description', 'Credits Change', 'Balance'];
+    const csvHeaders = ['Date', 'Type', 'Description', 'Previous Balance', 'Credits Change', 'Amount (BDT)', 'Job ID'];
     const csvRows = history.map(entry => [
       new Date(entry.date).toLocaleString(),
       entry.type,
       entry.description,
-      entry.creditsChange > 0 ? `+${entry.creditsChange}` : entry.creditsChange,
-      entry.amountBdt ? `৳${entry.amountBdt}` : '-'
+      entry.previousCredit.toFixed(2),
+      entry.creditsChange > 0 ? `+${entry.creditsChange.toFixed(2)}` : entry.creditsChange.toFixed(2),
+      entry.amountBdt ? `৳${entry.amountBdt.toFixed(2)}` : '',
+      entry.jobId || ''
     ]);
 
     const csvContent = [
@@ -329,10 +333,16 @@ export default function CreditHistoryTab({ userId }: CreditHistoryTabProps) {
                       Description
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Previous Balance
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Credits Change
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount (BDT)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Job ID
                     </th>
                   </tr>
                 </thead>
@@ -358,13 +368,19 @@ export default function CreditHistoryTab({ userId }: CreditHistoryTabProps) {
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {entry.description}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                        {entry.previousCredit.toFixed(2)}
+                      </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold text-right ${
                         entry.creditsChange > 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {entry.creditsChange > 0 ? '+' : ''}{entry.creditsChange.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
-                        {entry.amountBdt ? `৳${entry.amountBdt.toFixed(2)}` : '-'}
+                        {entry.amountBdt ? `৳${entry.amountBdt.toFixed(2)}` : ''}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-xs">
+                        {entry.jobId || ''}
                       </td>
                     </tr>
                   ))}

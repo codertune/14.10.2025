@@ -1301,7 +1301,8 @@ const DatabaseService = {
           amount_bdt,
           payment_method,
           transaction_id::text as reference_id,
-          payment_status as status
+          payment_status as status,
+          NULL as job_id
         FROM transactions
         WHERE user_id = $1 AND payment_status = 'completed'`;
 
@@ -1315,7 +1316,8 @@ const DatabaseService = {
           null as amount_bdt,
           service_name as payment_method,
           id::text as reference_id,
-          status
+          status,
+          id::text as job_id
         FROM work_history
         WHERE user_id = $1`;
 
@@ -1338,9 +1340,31 @@ const DatabaseService = {
 
       if (transactionType) {
         if (transactionType === 'purchase') {
-          usageQuery = 'SELECT * FROM (SELECT 1 as id LIMIT 0) as empty';
+          usageQuery = `SELECT
+            NULL::uuid as id,
+            NULL::timestamptz as date,
+            NULL::text as type,
+            NULL::text as description,
+            NULL::numeric as credits_change,
+            NULL::numeric as amount_bdt,
+            NULL::text as payment_method,
+            NULL::text as reference_id,
+            NULL::text as status,
+            NULL::text as job_id
+            WHERE FALSE`;
         } else if (transactionType === 'usage') {
-          purchasesQuery = 'SELECT * FROM (SELECT 1 as id LIMIT 0) as empty';
+          purchasesQuery = `SELECT
+            NULL::uuid as id,
+            NULL::timestamptz as date,
+            NULL::text as type,
+            NULL::text as description,
+            NULL::numeric as credits_change,
+            NULL::numeric as amount_bdt,
+            NULL::text as payment_method,
+            NULL::text as reference_id,
+            NULL::text as status,
+            NULL::text as job_id
+            WHERE FALSE`;
         }
       }
 
@@ -1394,17 +1418,27 @@ const DatabaseService = {
       );
       const currentBalance = parseFloat(currentUserResult.rows[0]?.credits || 0);
 
-      const historyWithBalance = historyResult.rows.map((row, index) => ({
-        id: row.id,
-        date: row.date,
-        type: row.type,
-        description: row.description,
-        creditsChange: parseFloat(row.credits_change),
-        amountBdt: row.amount_bdt ? parseFloat(row.amount_bdt) : null,
-        paymentMethod: row.payment_method,
-        referenceId: row.reference_id,
-        status: row.status
-      }));
+      // Calculate previous balance for each transaction (reverse chronological)
+      let runningBalance = currentBalance;
+      const historyWithBalance = historyResult.rows.map((row, index) => {
+        const previousCredit = runningBalance;
+        const creditsChange = parseFloat(row.credits_change);
+        runningBalance = runningBalance - creditsChange;
+
+        return {
+          id: row.id,
+          date: row.date,
+          type: row.type,
+          description: row.description,
+          creditsChange: creditsChange,
+          amountBdt: row.amount_bdt ? parseFloat(row.amount_bdt) : null,
+          paymentMethod: row.payment_method,
+          referenceId: row.reference_id,
+          status: row.status,
+          jobId: row.job_id || null,
+          previousCredit: parseFloat(previousCredit.toFixed(2))
+        };
+      });
 
       const summaryQuery = `
         SELECT
