@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Users, Settings, BarChart3, FileText, Plus, CreditCard as Edit, Trash2, Save, X, Upload, Image, Eye, EyeOff, AlertTriangle, CheckCircle, Mail, Globe, Truck, Building, DollarSign } from 'lucide-react';
+import { Users, Settings, BarChart3, FileText, Plus, CreditCard as Edit, Trash2, Save, X, Upload, Image, Eye, EyeOff, AlertTriangle, CheckCircle, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import EnhancedUserTable from '../components/EnhancedUserTable';
 import ContactMessagesPanel from '../components/ContactMessagesPanel';
@@ -468,14 +468,10 @@ export default function AdminDashboard() {
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Service Management</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Enable or disable services to control what users can access
+                  {allServices.filter(s => isServiceEnabled(s.id)).length} of {allServices.length} services enabled
                 </p>
               </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right px-4 py-2 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-600">{allServices.filter(s => isServiceEnabled(s.id)).length}</div>
-                  <div className="text-xs text-gray-600">of {allServices.length} enabled</div>
-                </div>
+              <div className="flex space-x-3">
                 <button
                   onClick={() => {
                     allServices.forEach(service => {
@@ -484,7 +480,7 @@ export default function AdminDashboard() {
                       }
                     });
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                 >
                   Enable All
                 </button>
@@ -496,7 +492,7 @@ export default function AdminDashboard() {
                       }
                     });
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                 >
                   Disable All
                 </button>
@@ -504,98 +500,78 @@ export default function AdminDashboard() {
             </div>
 
             {/* Group services by category */}
-            <div className="space-y-6">
-              {Array.from(new Set(allServices.map(s => s.category))).map(category => {
-                const categoryServices = allServices.filter(s => s.category === category);
-                const enabledInCategory = categoryServices.filter(s => isServiceEnabled(s.id)).length;
+            {Array.from(new Set(allServices.map(s => s.category))).map(category => {
+              const categoryServices = allServices.filter(s => s.category === category);
+              const enabledInCategory = categoryServices.filter(s => isServiceEnabled(s.id)).length;
 
-                const getCategoryIcon = (cat: string) => {
-                  if (cat.includes('Bangladesh Bank')) return <Globe className="h-5 w-5" />;
-                  if (cat.includes('Damco') || cat.includes('Tracking')) return <Truck className="h-5 w-5" />;
-                  if (cat.includes('H&M') || cat.includes('BEPZA')) return <Building className="h-5 w-5" />;
-                  if (cat.includes('Cash Incentive')) return <DollarSign className="h-5 w-5" />;
-                  return <FileText className="h-5 w-5" />;
-                };
-
-                return (
-                  <div key={category} className="bg-gradient-to-br from-gray-50 to-blue-50/20 rounded-xl p-5 border-2 border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                          {getCategoryIcon(category)}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-lg">{category}</h3>
-                          <span className="text-sm text-gray-600 font-medium">
-                            {enabledInCategory} of {categoryServices.length} services enabled
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const shouldEnable = enabledInCategory < categoryServices.length;
-                          categoryServices.forEach(service => {
-                            if (shouldEnable && !isServiceEnabled(service.id)) {
-                              toggleService(service.id);
-                            } else if (!shouldEnable && isServiceEnabled(service.id)) {
-                              toggleService(service.id);
-                            }
-                          });
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md text-sm font-semibold"
-                      >
-                        {enabledInCategory === categoryServices.length ? 'Disable All' : 'Enable All'}
-                      </button>
+              return (
+                <div key={category} className="mb-6 last:mb-0">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-semibold text-gray-900">{category}</h3>
+                      <span className="text-sm text-gray-500">({enabledInCategory}/{categoryServices.length} enabled)</span>
                     </div>
-                    <div className="grid gap-3">
-                      {categoryServices.map(service => (
-                        <div
-                          key={service.id}
-                          className={`flex items-center justify-between p-4 border-2 rounded-xl transition-all hover:shadow-md ${
-                            isServiceEnabled(service.id)
-                              ? 'border-green-300 bg-gradient-to-r from-green-50 to-emerald-50'
-                              : 'border-gray-300 bg-white'
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3">
-                              <h4 className="font-semibold text-gray-900">{service.name}</h4>
-                              {isServiceEnabled(service.id) ? (
-                                <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-sm">
-                                  ACTIVE
-                                </span>
-                              ) : (
-                                <span className="px-3 py-1 bg-gray-400 text-white text-xs font-bold rounded-full shadow-sm">
-                                  INACTIVE
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-4 mt-2">
-                              <span className="text-xs text-gray-500 font-medium">{service.category}</span>
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">
-                                {getServiceCreditCost(service.id)} credits
-                              </span>
-                              <span className="text-xs text-green-600 font-bold">
-                                ?{(getServiceCreditCost(service.id) / creditSettings.creditsPerBDT).toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer ml-4">
-                            <input
-                              type="checkbox"
-                              checked={isServiceEnabled(service.id)}
-                              onChange={() => toggleService(service.id)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
+                    <button
+                      onClick={() => {
+                        const shouldEnable = enabledInCategory < categoryServices.length;
+                        categoryServices.forEach(service => {
+                          if (shouldEnable && !isServiceEnabled(service.id)) {
+                            toggleService(service.id);
+                          } else if (!shouldEnable && isServiceEnabled(service.id)) {
+                            toggleService(service.id);
+                          }
+                        });
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {enabledInCategory === categoryServices.length ? 'Disable Category' : 'Enable Category'}
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="grid gap-3">
+                    {categoryServices.map(service => (
+                      <div
+                        key={service.id}
+                        className={`flex items-center justify-between p-4 border-2 rounded-lg transition-all ${
+                          isServiceEnabled(service.id)
+                            ? 'border-green-200 bg-green-50'
+                            : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h4 className="font-medium text-gray-900">{service.name}</h4>
+                            {isServiceEnabled(service.id) ? (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                                ENABLED
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-semibold rounded-full">
+                                DISABLED
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <p className="text-sm text-gray-500">{service.category}</p>
+                            <span className="text-xs text-blue-600 font-medium">
+                              {getServiceCreditCost(service.id)} credits
+                            </span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isServiceEnabled(service.id)}
+                            onChange={() => toggleService(service.id)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -980,9 +956,9 @@ export default function AdminDashboard() {
 
             {/* Credit Settings */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Global Credit Settings</h2>
-
-              <div className="grid md:grid-cols-3 gap-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Credit Settings</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Credits per BDT</label>
                   <input
@@ -992,9 +968,8 @@ export default function AdminDashboard() {
                     onChange={(e) => updateCreditSettings({ creditsPerBDT: parseFloat(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Exchange rate for credit purchases</p>
                 </div>
-
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Free Trial Credits</label>
                   <input
@@ -1003,9 +978,8 @@ export default function AdminDashboard() {
                     onChange={(e) => updateCreditSettings({ freeTrialCredits: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Credits given to new users</p>
                 </div>
-
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Purchase Credits</label>
                   <input
@@ -1014,56 +988,41 @@ export default function AdminDashboard() {
                     onChange={(e) => updateCreditSettings({ minPurchaseCredits: parseInt(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Minimum credits per purchase</p>
                 </div>
               </div>
-            </div>
-
-            {/* Individual Service Credits - Now a separate prominent section */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Individual Service Credits</h2>
-                  <p className="text-sm text-gray-500 mt-1">Configure credit cost for each service</p>
+              
+              {/* Individual Service Credits */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Individual Service Credits</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                  {allServices.map(service => (
+                    <div key={service.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <div className="mb-2">
+                        <h4 className="font-medium text-gray-900 text-sm">{service.name}</h4>
+                        <p className="text-xs text-gray-500">{service.category}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={getServiceCreditCost(service.id)}
+                          onChange={(e) => updateServiceCreditCost(service.id, parseFloat(e.target.value) || 0)}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <span className="text-xs text-gray-500">credits</span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        Price: ?{(getServiceCreditCost(service.id) / creditSettings.creditsPerBDT).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">{allServices.length}</div>
-                  <div className="text-xs text-gray-500 uppercase">Total Services</div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>Note:</strong> Changes are saved automatically. The price is calculated based on the Credits per BDT rate above.
+                  </p>
                 </div>
-              </div>
-
-              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
-                  <strong>Note:</strong> Changes are saved automatically. The price is calculated based on the Credits per BDT rate ({creditSettings.creditsPerBDT} credits = ?1).
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto p-1">
-                {allServices.map(service => (
-                  <div key={service.id} className="bg-gradient-to-br from-gray-50 to-blue-50/30 p-4 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
-                    <div className="mb-3">
-                      <h4 className="font-semibold text-gray-900 text-sm mb-1">{service.name}</h4>
-                      <p className="text-xs text-gray-500 font-medium">{service.category}</p>
-                    </div>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={getServiceCreditCost(service.id)}
-                        onChange={(e) => updateServiceCreditCost(service.id, parseFloat(e.target.value) || 0)}
-                        className="flex-1 px-3 py-2 text-sm font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <span className="text-xs text-gray-600 font-semibold whitespace-nowrap">credits</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200">
-                      <span className="text-xs text-gray-500">Price:</span>
-                      <span className="text-sm font-bold text-green-600">
-                        ?{(getServiceCreditCost(service.id) / creditSettings.creditsPerBDT).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
