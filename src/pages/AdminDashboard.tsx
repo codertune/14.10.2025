@@ -103,7 +103,8 @@ export default function AdminDashboard() {
     { id: 'damco-tracking-maersk', name: 'Damco (APM) Tracking', category: 'Tracking Services' },
     { id: 'myshipment-tracking', name: 'MyShipment Tracking (MGH)', category: 'Tracking Services' },
     { id: 'egm-download', name: 'EGM Download', category: 'Tracking Services' },
-    { id: 'custom-tracking', name: 'Custom Tracking', category: 'Tracking Services' }
+    { id: 'custom-tracking', name: 'Custom Tracking', category: 'Tracking Services' },
+    { id: 'rex-soo-submission', name: 'REX/SOO Submission', category: 'EPB Export' }
   ];
 
   const handleUserUpdate = (userId: string, field: string, value: any) => {

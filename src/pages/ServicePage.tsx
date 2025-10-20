@@ -204,6 +204,13 @@ const services: Service[] = [
     description: 'Track customs clearance status with automated status updates.',
     category: 'Tracking Services',
     features: ['Customs tracking', 'Clearance status', 'Document verification', 'Process monitoring']
+  },
+  {
+    id: 'rex-soo-submission',
+    name: 'REX/SOO Submission',
+    description: 'Automated REX/SOO form submission to EPB Export Tracker with bulk PDF uploads.',
+    category: 'EPB Export',
+    features: ['Automated form filling', 'Bulk PDF upload', 'Multi-invoice processing', 'Results tracking']
   }
 ];
 
@@ -214,7 +221,8 @@ const categoryIcons: { [key: string]: React.ReactNode } = {
   'Buyer Handler - H&M': <Building className="h-6 w-6" />,
   'BEPZA': <BarChart3 className="h-6 w-6" />,
   'Cash Incentive Applications': <DollarSign className="h-6 w-6" />,
-  'Tracking Services': <Truck className="h-6 w-6" />
+  'Tracking Services': <Truck className="h-6 w-6" />,
+  'EPB Export': <Globe className="h-6 w-6" />
 };
 
 export default function ServicePage() {
