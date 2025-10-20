@@ -13,9 +13,9 @@ export default function Footer() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
-          <div className="col-span-1 md:col-span-2">
+          <div className="col-span-1 md:col-span-2 lg:col-span-1">
             <div className="flex items-center mb-4 group">
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <BarChart3 className="h-6 w-6 text-white" />
@@ -65,6 +65,37 @@ export default function Footer() {
                 <Link to="/privacy" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200 inline-flex items-center group">
                   <span className="w-0 group-hover:w-2 h-0.5 bg-cyan-400 transition-all duration-200 mr-0 group-hover:mr-2"></span>
                   Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Popular Services */}
+          <div>
+            <h3 className="text-lg font-bold mb-4 text-cyan-400">Popular Services</h3>
+            <ul className="space-y-3">
+              <li>
+                <Link to="/services" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200 inline-flex items-center group">
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-cyan-400 transition-all duration-200 mr-0 group-hover:mr-2"></span>
+                  Bangladesh Bank
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200 inline-flex items-center group">
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-cyan-400 transition-all duration-200 mr-0 group-hover:mr-2"></span>
+                  Damco Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200 inline-flex items-center group">
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-cyan-400 transition-all duration-200 mr-0 group-hover:mr-2"></span>
+                  Tracking Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200 inline-flex items-center group">
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-cyan-400 transition-all duration-200 mr-0 group-hover:mr-2"></span>
+                  PDF to Excel
                 </Link>
               </li>
             </ul>
