@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+EPB Export Tracker Full Automation (Final Edition)
+Author: Izaz Ahamed
+--------------------------------------------------
+Workflow:
+1️⃣ Login
+2️⃣ Add SOO → Confirm Popup
+3️⃣ Open first record
+4️⃣ Fill all fields from CSV
+5️⃣ Upload Invoice + Bill of Lading
+6️⃣ Save + Back
+7️⃣ Repeat for next CSV row
+8️⃣ Logs results into soo_results.csv
+"""
+
+import os, csv, time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException
+
+# ---------------- Configuration ----------------
+URL = "https://epb-exporttracker.gov.bd/#/login"
+USERNAME = "your_username_here"
+PASSWORD = "your_password_here"
+CSV_FILE = "soo_data.csv"
+RESULT_LOG = "soo_results.csv"
+HEADLESS = False
+TIMEOUT = 25
+
+# ---------------- Setup Driver -----------------
+def setup_driver(headless=HEADLESS):
+    opts = Options()
+    if headless:
+        opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--disable-gpu")
+    return webdriver.Chrome(options=opts)
+
+# ---------------- CSV Helpers ------------------
+def read_csv(file_path):
+    with open(file_path, newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+def write_log(data, success, message):
+    file_exists = os.path.exists(RESULT_LOG)
+    with open(RESULT_LOG, "a", newline='', encoding='utf-8') as logf:
+        writer = csv.writer(logf)
+        if not file_exists:
+            writer.writerow(["InvoiceNo", "Status", "Message"])
+        writer.writerow([data.get("InvoiceNo", ""), "✅ Success" if success else "❌ Failed", message])
+
+# ---------------- Main Automation --------------
+def main():
+    driver = setup_driver()
+    wait = WebDriverWait(driver, TIMEOUT)
+    rows = read_csv(CSV_FILE)
+
+    try:
+        print("🌐 Opening EPB Export Tracker...")
+        driver.get(URL)
+
+        # --- Login ---
+        print("🔐 Logging in...")
+        wait.until(EC.presence_of_element_located((By.ID, "inputUserName"))).send_keys(USERNAME)
+        driver.find_element(By.ID, "inputPassword").send_keys(PASSWORD)
+        driver.find_element(By.CSS_SELECTOR, "button.btn i.icon-lock").find_element(By.XPATH, "..").click()
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.tile a[href*='sooList']")))
+        print("✅ Logged in successfully.")
+
+        # --- Process each row ---
+        for idx, row in enumerate(rows, start=1):
+            print(f"\n🚀 Processing record {idx}/{len(rows)} → Invoice: {row['InvoiceNo']}")
+
+            try:
+                # Go to SoO List
+                driver.find_element(By.CSS_SELECTOR, "div.tile a[href*='sooList']").click()
+                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[ng-click='checkSooFormEligibility()']"))).click()
+                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn.btn-primary[ng-click=\"close('yes')\"]"))).click()
+                print("☑️ Add SOO confirmed.")
+                wait.until_not(EC.presence_of_element_located((By.CSS_SELECTOR, ".k-loading-mask")))
+
+                # Open first record
+                first_row = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.k-grid-content tbody tr:first-child a")))
+                driver.execute_script("arguments[0].click();", first_row)
+                print("🧭 Opened first SoO record.")
+                wait.until(EC.presence_of_element_located((By.LINK_TEXT, "SoO Form Details"))).click()
+
+                # Fill dropdowns & inputs
+                Select(wait.until(EC.presence_of_element_located((By.ID, "RexImporterId")))).select_by_value(row["RexImporterId"])
+                Select(driver.find_element(By.ID, "DestinationCountryId")).select_by_value(row["DestinationCountryId"])
+                Select(driver.find_element(By.ID, "inputFreightRoute")).select_by_visible_text(row["FreightRoute"])
+                driver.find_element(By.ID, "inputBLNo").send_keys(row["BLNo"])
+                driver.find_element(By.ID, "inputBLDate").send_keys(row["BLDate"])
+                driver.find_element(By.ID, "inputContainerNo").send_keys(row["ContainerNo"])
+                driver.find_element(By.ID, "adCode").send_keys(row["AdCode"])
+                driver.find_element(By.ID, "serial").send_keys(row["Serial"])
+                Select(driver.find_element(By.ID, "year")).select_by_visible_text(row["Year"])
+                driver.find_element(By.ID, "inputEXPDate").send_keys(row["EXPDate"])
+                driver.find_element(By.ID, "inputBillOfExportNo").send_keys(row["BillOfExportNo"])
+                driver.find_element(By.ID, "inputBillOfExportDate").send_keys(row["BillOfExportDate"])
+
+                Select(driver.find_element(By.ID, "inputHSCode")).select_by_visible_text(row["HSCode"])
+                driver.find_element(By.ID, "inputQnty").send_keys(row["Quantity"])
+                Select(driver.find_element(By.ID, "inputUnitType")).select_by_visible_text(row["UnitType"])
+                driver.find_element(By.CSS_SELECTOR, "a[ng-click^='addHsCodeInfo']").click()
+
+                driver.find_element(By.ID, "inputInvoiceNo").send_keys(row["InvoiceNo"])
+                driver.find_element(By.ID, "inputInvoiceDate").send_keys(row["InvoiceDate"])
+                Select(driver.find_element(By.ID, "currency")).select_by_visible_text(row["Currency"])
+                driver.find_element(By.ID, "inputInvoiceValue").send_keys(row["InvoiceValue"])
+                driver.find_element(By.ID, "inputDate").send_keys(row["DeclarationDate"])
+
+                print("📄 SoO Form Details filled.")
+
+                # Upload Commercial Invoice
+                wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Commercial Invoice"))).click()
+                ci_file = os.path.abspath(row["CommercialInvoicePath"])
+                ci_upload = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file'][accept*='.pdf']")))
+                ci_upload.send_keys(ci_file)
+                print(f"📤 Uploaded Commercial Invoice: {ci_file}")
+
+                # Upload Bill of Lading
+                wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Bill of Lading"))).click()
+                bol_file = os.path.abspath(row["BillOfLadingPath"])
+                bol_upload = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file'][accept*='.pdf']")))
+                bol_upload.send_keys(bol_file)
+                print(f"📦 Uploaded Bill of Lading: {bol_file}")
+
+                # Save
+                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.control-bar-save-btn[ng-click*='save()']"))).click()
+                print("💾 Form saved successfully.")
+                time.sleep(4)
+
+                # Go Back
+                wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href*='sooList'].navigate-link"))).click()
+                print("⬅️ Returned to SoO list.")
+
+                # Log success
+                write_log(row, True, "Uploaded & saved successfully")
+
+            except Exception as inner_err:
+                print(f"⚠️ Error in record {row.get('InvoiceNo', '')}: {inner_err}")
+                write_log(row, False, str(inner_err))
+                continue
+
+        print("\n🎉 All records processed! Check soo_results.csv for summary.")
+
+    except TimeoutException as e:
+        print(f"⏰ Timeout error: {e}")
+    except Exception as e:
+        print(f"🚨 Fatal error: {e}")
+    finally:
+        driver.quit()
+
+# ---------------- Entry Point -------------------
+if __name__ == "__main__":
+    main()
