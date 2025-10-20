@@ -152,7 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       'damco-tracking-maersk': 1,
       'myshipment-tracking': 1,
       'egm-download': 1,
-      'custom-tracking': 1.5
+      'custom-tracking': 1.5,
+      'rex-soo-submission': 2
     },
     enabledServices: [
       'pdf-excel-converter',
@@ -180,7 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       'damco-tracking-maersk',
       'myshipment-tracking',
       'egm-download',
-      'custom-tracking'
+      'custom-tracking',
+      'rex-soo-submission'
     ]
   });
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FileText, Globe, Truck, Building, BarChart3, DollarSign, CreditCard, TrendingUp, Activity, Zap, AlertCircle, CheckCircle, Download, LayoutDashboard, User as UserIcon, History, Lock, Save, X, CreditCard as Edit2, Key } from 'lucide-react';
+import { FileText, Globe, Truck, Building, BarChart3, DollarSign, CreditCard, TrendingUp, Activity, Zap, AlertCircle, CheckCircle, Download, LayoutDashboard, User as UserIcon, History, Lock, Save, X, CreditCard as Edit2, Key, Archive, FileSpreadsheet } from 'lucide-react';
 import ServiceSelector from '../components/ServiceSelector';
 import FileUploadZone from '../components/FileUploadZone';
+import DualFileUploadZone from '../components/DualFileUploadZone';
 import CreditCalculator from '../components/CreditCalculator';
 import WorkHistoryPanel from '../components/WorkHistoryPanel';
 import CreditPurchaseModal from '../components/CreditPurchaseModal';
@@ -95,6 +96,7 @@ export default function NewDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
   const [rowCount, setRowCount] = useState<number>(0);
   const [totalCredits, setTotalCredits] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -188,8 +190,26 @@ export default function NewDashboard() {
     setShowConfirmation(false);
   };
 
+  const handleSecondaryFileSelect = (file: File) => {
+    setSecondaryFile(file);
+    setShowConfirmation(false);
+  };
+
   const handleFileClear = () => {
     setSelectedFile(null);
+    setSecondaryFile(null);
+    setRowCount(0);
+    setTotalCredits(0);
+    setShowConfirmation(false);
+  };
+
+  const handlePrimaryFileClear = () => {
+    setSelectedFile(null);
+    setShowConfirmation(false);
+  };
+
+  const handleSecondaryFileClear = () => {
+    setSecondaryFile(null);
     setRowCount(0);
     setTotalCredits(0);
     setShowConfirmation(false);
@@ -360,6 +380,11 @@ export default function NewDashboard() {
       return;
     }
 
+    if (selectedService.id === 'rex-soo-submission' && !secondaryFile) {
+      showNotification('Both ZIP and CSV files are required for REX/SOO submission.', 'error');
+      return;
+    }
+
     if (user && user.credits < totalCredits) {
       showNotification('Insufficient credits. Please purchase more credits.', 'error');
       return;
@@ -369,6 +394,52 @@ export default function NewDashboard() {
 
     try {
       const formData = new FormData();
+
+      if (selectedService.id === 'rex-soo-submission') {
+        formData.append('zipFile', selectedFile);
+        formData.append('csvFile', secondaryFile!);
+        formData.append('userId', user!.id);
+        formData.append('totalCredits', totalCredits.toString());
+
+        console.log('📤 Submitting REX/SOO automation:', {
+          serviceId: selectedService.id,
+          zipFileName: selectedFile.name,
+          csvFileName: secondaryFile!.name,
+          rowCount,
+          totalCredits
+        });
+
+        const response = await fetch('/api/process-rex-submission', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.newCredits !== undefined) {
+            updateUser({ credits: result.newCredits });
+          }
+
+          setCurrentJob(result);
+          startElapsedTimer();
+
+          if (result.status !== 'completed') {
+            startPolling(result.jobId);
+          }
+
+          const message = result.immediate
+            ? 'REX/SOO submission processing started!'
+            : `Job queued at position ${result.queuePosition}`;
+          showNotification(message, 'success');
+        } else {
+          const errorMsg = result.error || result.message || 'Unknown error';
+          showNotification('Failed to start REX/SOO submission: ' + errorMsg, 'error');
+          setIsProcessing(false);
+        }
+        return;
+      }
+
       formData.append('file', selectedFile);
       formData.append('serviceId', selectedService.id);
       formData.append('userId', user!.id);
@@ -575,9 +646,9 @@ export default function NewDashboard() {
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <label className="block text-sm font-semibold text-gray-700">
-                            Step 2: Upload File
+                            Step 2: Upload File{selectedService.id === 'rex-soo-submission' ? 's' : ''}
                           </label>
-                          {SERVICE_CONFIG[selectedService.id]?.hasTemplate && (
+                          {SERVICE_CONFIG[selectedService.id]?.hasTemplate && selectedService.id !== 'rex-soo-submission' && (
                             <a
                               href={`/templates/${selectedService.id}-template.csv`}
                               download
@@ -588,31 +659,64 @@ export default function NewDashboard() {
                             </a>
                           )}
                         </div>
-                        {selectedService.id === 'rex-soo-submission' && (
-                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-xs text-blue-800">
-                              <strong>Note:</strong> Upload a ZIP file containing Commercial Invoice and Bill of Lading PDFs. The CSV template maps which PDFs to use for each submission.
-                            </p>
-                          </div>
+                        {selectedService.id === 'rex-soo-submission' ? (
+                          <>
+                            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <p className="text-xs text-blue-800 mb-2">
+                                <strong>Note:</strong> This service requires two files:
+                              </p>
+                              <ul className="text-xs text-blue-800 list-disc list-inside space-y-1 ml-2">
+                                <li>ZIP file containing all Commercial Invoice and Bill of Lading PDFs</li>
+                                <li>CSV template that maps which PDFs to use for each submission</li>
+                              </ul>
+                              <div className="mt-2 pt-2 border-t border-blue-200">
+                                <a
+                                  href="/templates/rex-soo-submission-template.csv"
+                                  download
+                                  className="inline-flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  <span>Download CSV Template</span>
+                                </a>
+                              </div>
+                            </div>
+                            <DualFileUploadZone
+                              primaryFile={selectedFile}
+                              secondaryFile={secondaryFile}
+                              onPrimaryFileSelect={handleFileSelect}
+                              onSecondaryFileSelect={handleSecondaryFileSelect}
+                              onPrimaryFileClear={handlePrimaryFileClear}
+                              onSecondaryFileClear={handleSecondaryFileClear}
+                              primaryLabel="ZIP File (PDFs)"
+                              secondaryLabel="CSV File (Template)"
+                              primaryAcceptedFormats=".zip"
+                              secondaryAcceptedFormats=".csv"
+                              primaryIcon={<Archive className="h-6 w-6 text-white" />}
+                              secondaryIcon={<FileSpreadsheet className="h-6 w-6 text-white" />}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            {selectedService.id === 'pdf-excel-converter' && (
+                              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-xs text-blue-800">
+                                  <strong>Note:</strong> Upload PDF files or a ZIP containing multiple PDFs to convert to Excel/CSV format.
+                                </p>
+                              </div>
+                            )}
+                            <FileUploadZone
+                              onFileSelect={handleFileSelect}
+                              selectedFile={selectedFile}
+                              onClear={handleFileClear}
+                              acceptedFormats={acceptedFileFormats}
+                            />
+                          </>
                         )}
-                        {selectedService.id === 'pdf-excel-converter' && (
-                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-xs text-blue-800">
-                              <strong>Note:</strong> Upload PDF files or a ZIP containing multiple PDFs to convert to Excel/CSV format.
-                            </p>
-                          </div>
-                        )}
-                        <FileUploadZone
-                          onFileSelect={handleFileSelect}
-                          selectedFile={selectedFile}
-                          onClear={handleFileClear}
-                          acceptedFormats={acceptedFileFormats}
-                        />
                       </div>
 
-                      {selectedFile && (
+                      {(selectedService.id === 'rex-soo-submission' ? secondaryFile : selectedFile) && (
                         <CreditCalculator
-                          file={selectedFile}
+                          file={selectedService.id === 'rex-soo-submission' ? secondaryFile! : selectedFile!}
                           serviceId={selectedService.id}
                           creditCostPerUnit={getServiceCreditCost(selectedService.id)}
                           onCalculationComplete={handleCalculationComplete}
@@ -645,7 +749,7 @@ export default function NewDashboard() {
                         </div>
                       )}
 
-                      {showConfirmation && selectedFile && totalCredits > 0 && (
+                      {showConfirmation && (selectedService.id === 'rex-soo-submission' ? (selectedFile && secondaryFile) : selectedFile) && totalCredits > 0 && (
                         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5">
                           <div className="flex items-start space-x-3 mb-4">
                             <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -655,9 +759,23 @@ export default function NewDashboard() {
                               <h3 className="text-base font-bold text-gray-900 mb-1">
                                 Ready to Process
                               </h3>
-                              <p className="text-xs text-gray-700 mb-2">
-                                Process {rowCount} {rowCount === 1 ? 'item' : 'items'}, use {totalCredits.toFixed(2)} credits
-                              </p>
+                              {selectedService.id === 'rex-soo-submission' ? (
+                                <div className="space-y-1 mb-2">
+                                  <p className="text-xs text-gray-700">
+                                    <strong>ZIP File:</strong> {selectedFile?.name}
+                                  </p>
+                                  <p className="text-xs text-gray-700">
+                                    <strong>CSV File:</strong> {secondaryFile?.name}
+                                  </p>
+                                  <p className="text-xs text-gray-700 mt-2">
+                                    Process {rowCount} {rowCount === 1 ? 'submission' : 'submissions'}, use {totalCredits.toFixed(2)} credits
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-700 mb-2">
+                                  Process {rowCount} {rowCount === 1 ? 'item' : 'items'}, use {totalCredits.toFixed(2)} credits
+                                </p>
+                              )}
                               {user && user.credits < totalCredits && (
                                 <div className="flex items-start space-x-2 bg-red-50 border border-red-200 rounded-lg p-2 mb-2">
                                   <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
