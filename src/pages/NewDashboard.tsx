@@ -24,6 +24,37 @@ interface Service {
   icon: React.ReactNode;
 }
 
+// Service configuration mapping
+const SERVICE_CONFIG: Record<string, { acceptedFormats: string; hasTemplate: boolean; requiresCredentials?: string; credentialPortal?: string; credentialPortalDisplay?: string }> = {
+  'pdf-excel-converter': { acceptedFormats: '.pdf,.zip', hasTemplate: false },
+  'exp-issue': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true, requiresCredentials: 'bangladesh_bank_exp', credentialPortal: 'bangladesh_bank_exp', credentialPortalDisplay: 'Bangladesh Bank EXP Portal' },
+  'exp-correction': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true, requiresCredentials: 'bangladesh_bank_exp', credentialPortal: 'bangladesh_bank_exp', credentialPortalDisplay: 'Bangladesh Bank EXP Portal' },
+  'exp-duplicate-reporting': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true, requiresCredentials: 'bangladesh_bank_exp', credentialPortal: 'bangladesh_bank_exp', credentialPortalDisplay: 'Bangladesh Bank EXP Portal' },
+  'exp-search': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true, requiresCredentials: 'bangladesh_bank_exp', credentialPortal: 'bangladesh_bank_exp', credentialPortalDisplay: 'Bangladesh Bank EXP Portal' },
+  'rex-soo-submission': { acceptedFormats: '.zip', hasTemplate: true, requiresCredentials: 'epb_export_tracker', credentialPortal: 'epb_export_tracker', credentialPortalDisplay: 'EPB Export Tracker Portal' },
+  'damco-booking': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'damco-booking-download': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'damco-fcr-submission': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'damco-fcr-extractor': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'damco-edoc-upload': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'hm-einvoice-create': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'hm-einvoice-download': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'hm-einvoice-correction': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'hm-packing-list': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ep-issue': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ep-submission': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ep-download': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ip-issue': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ip-submit': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'bepza-ip-download': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'cash-incentive-application': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'ctg-port-tracking': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'damco-tracking-maersk': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'myshipment-tracking': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'egm-download': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true },
+  'custom-tracking': { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true }
+};
+
 const allServices: Service[] = [
   { id: 'pdf-excel-converter', name: 'PDF to Excel/CSV', description: 'Convert PDF tables to Excel/CSV with intelligent recognition', category: 'PDF Extractor', icon: <FileText className="h-5 w-5" /> },
   { id: 'exp-issue', name: 'Issue EXP', description: 'Automated EXP issuance through Bangladesh Bank portal', category: 'Bangladesh Bank', icon: <Globe className="h-5 w-5" /> },
@@ -75,6 +106,9 @@ export default function NewDashboard() {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credentialsRequired, setCredentialsRequired] = useState(false);
   const [hasCredentials, setHasCredentials] = useState(false);
+  const [credentialPortalName, setCredentialPortalName] = useState('');
+  const [credentialPortalDisplay, setCredentialPortalDisplay] = useState('');
+  const [acceptedFileFormats, setAcceptedFileFormats] = useState('.csv,.xlsx,.xls,.pdf');
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -122,13 +156,21 @@ export default function NewDashboard() {
     setTotalCredits(0);
     setShowConfirmation(false);
 
-    const servicesRequiringCredentials = ['exp-search', 'rex-soo-submission'];
-    const requiresCreds = servicesRequiringCredentials.includes(service.id);
+    // Get service configuration
+    const serviceConfig = SERVICE_CONFIG[service.id] || { acceptedFormats: '.csv,.xlsx,.xls', hasTemplate: true };
+    setAcceptedFileFormats(serviceConfig.acceptedFormats);
+
+    // Check if service requires credentials
+    const requiresCreds = !!serviceConfig.requiresCredentials;
     setCredentialsRequired(requiresCreds);
 
     if (requiresCreds && user) {
+      const portalName = serviceConfig.credentialPortal || 'bangladesh_bank_exp';
+      const portalDisplay = serviceConfig.credentialPortalDisplay || 'Portal';
+      setCredentialPortalName(portalName);
+      setCredentialPortalDisplay(portalDisplay);
+
       try {
-        const portalName = service.id === 'rex-soo-submission' ? 'epb_export_tracker' : 'bangladesh_bank_exp';
         const response = await axios.get(`/api/credentials/check/${portalName}?userId=${user.id}`);
         setHasCredentials(response.data.exists);
       } catch (error) {
@@ -136,6 +178,8 @@ export default function NewDashboard() {
       }
     } else {
       setHasCredentials(true);
+      setCredentialPortalName('');
+      setCredentialPortalDisplay('');
     }
   };
 
@@ -533,19 +577,36 @@ export default function NewDashboard() {
                           <label className="block text-sm font-semibold text-gray-700">
                             Step 2: Upload File
                           </label>
-                          <a
-                            href={`/templates/${selectedService.id}-template.csv`}
-                            download
-                            className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            <span>Download Sample</span>
-                          </a>
+                          {SERVICE_CONFIG[selectedService.id]?.hasTemplate && (
+                            <a
+                              href={`/templates/${selectedService.id}-template.csv`}
+                              download
+                              className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              <span>Download Sample</span>
+                            </a>
+                          )}
                         </div>
+                        {selectedService.id === 'rex-soo-submission' && (
+                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800">
+                              <strong>Note:</strong> Upload a ZIP file containing Commercial Invoice and Bill of Lading PDFs. The CSV template maps which PDFs to use for each submission.
+                            </p>
+                          </div>
+                        )}
+                        {selectedService.id === 'pdf-excel-converter' && (
+                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800">
+                              <strong>Note:</strong> Upload PDF files or a ZIP containing multiple PDFs to convert to Excel/CSV format.
+                            </p>
+                          </div>
+                        )}
                         <FileUploadZone
                           onFileSelect={handleFileSelect}
                           selectedFile={selectedFile}
                           onClear={handleFileClear}
+                          acceptedFormats={acceptedFileFormats}
                         />
                       </div>
 
@@ -569,7 +630,7 @@ export default function NewDashboard() {
                                 Portal Credentials Required
                               </h3>
                               <p className="text-sm text-gray-700 mb-3">
-                                This service requires Bangladesh Bank portal credentials to function.
+                                This service requires {credentialPortalDisplay} credentials to function.
                                 Please configure your credentials before proceeding.
                               </p>
                               <button
@@ -1023,20 +1084,20 @@ export default function NewDashboard() {
         />
       )}
 
-      {showCredentialsModal && selectedService && (
+      {showCredentialsModal && selectedService && credentialPortalName && (
         <PortalCredentialsModal
           isOpen={showCredentialsModal}
           onClose={() => {
             setShowCredentialsModal(false);
-            if (selectedService && user) {
-              axios.get(`/api/credentials/check/bangladesh_bank_exp?userId=${user.id}`)
+            if (selectedService && user && credentialPortalName) {
+              axios.get(`/api/credentials/check/${credentialPortalName}?userId=${user.id}`)
                 .then(response => setHasCredentials(response.data.exists))
                 .catch(() => setHasCredentials(false));
             }
           }}
           userId={user?.id || ''}
-          portalName="bangladesh_bank_exp"
-          portalDisplayName="Bangladesh Bank EXP Portal"
+          portalName={credentialPortalName}
+          portalDisplayName={credentialPortalDisplay}
         />
       )}
     </div>
