@@ -1250,6 +1250,79 @@ app.post('/api/process-automation', upload.single('file'), async (req, res) => {
   }
 });
 
+app.post('/api/process-rex-submission', upload.fields([
+  { name: 'csvFile', maxCount: 1 },
+  { name: 'zipFile', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { userId, totalCredits } = req.body;
+    const csvFile = req.files?.csvFile?.[0];
+    const zipFile = req.files?.zipFile?.[0];
+
+    console.log('=== REX SOO Submission Request ===');
+    console.log('User ID:', userId);
+    console.log('CSV File:', csvFile?.originalname);
+    console.log('ZIP File:', zipFile?.originalname);
+    console.log('Total Credits:', totalCredits);
+
+    if (!csvFile) {
+      return res.status(400).json({ success: false, message: 'CSV file is required' });
+    }
+
+    if (!zipFile) {
+      return res.status(400).json({ success: false, message: 'ZIP file with PDFs is required' });
+    }
+
+    const serviceId = 'rex-soo-submission';
+    const serviceName = 'REX/SOO Submission';
+    const creditsUsed = totalCredits ? parseFloat(totalCredits) : 10;
+
+    console.log('💳 Credits to deduct:', creditsUsed);
+
+    const creditResult = await DatabaseService.deductCredits(userId, creditsUsed);
+    console.log('✅ Credits deducted. New balance:', creditResult.newCredits);
+
+    const result = await JobQueue.submitJob(
+      userId,
+      serviceId,
+      csvFile,
+      serviceName,
+      creditsUsed,
+      { zipFile }
+    );
+
+    res.json({
+      success: true,
+      jobId: result.jobId,
+      status: result.status,
+      immediate: result.immediate,
+      queuePosition: result.queuePosition,
+      newCredits: creditResult.newCredits,
+      message: result.immediate
+        ? 'REX submission job started immediately'
+        : `REX submission job queued at position ${result.queuePosition}`
+    });
+
+  } catch (error) {
+    console.error('REX submission error:', error);
+
+    if (error.message.includes('deduct credits')) {
+      try {
+        const user = await DatabaseService.getUserById(req.body.userId);
+        return res.status(400).json({
+          success: false,
+          message: 'Insufficient credits',
+          currentCredits: user?.credits || 0
+        });
+      } catch (userError) {
+        console.error('Error fetching user:', userError);
+      }
+    }
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.get('/api/download/:filename', (req, res) => {
   const { filename } = req.params;
   const filePath = path.join(__dirname, '../results', filename);

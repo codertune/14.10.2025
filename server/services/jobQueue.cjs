@@ -10,13 +10,14 @@ class JobQueue {
     this.maxConcurrent = 3;
   }
 
-  async submitJob(userId, serviceId, uploadedFile, serviceName, creditsUsed) {
+  async submitJob(userId, serviceId, uploadedFile, serviceName, creditsUsed, additionalFiles = {}) {
     try {
       const scriptMap = {
         'damco-tracking-maersk': 'damco_tracking_maersk.py',
         'ctg-port-tracking': 'ctg_port_tracking.py',
         'egm-download': 'egm_download.py',
-        'exp-search': 'bb_exp_search.py'
+        'exp-search': 'bb_exp_search.py',
+        'rex-soo-submission': 'rex_submission.py'
       };
 
       const scriptName = scriptMap[serviceId];
@@ -31,6 +32,27 @@ class JobQueue {
 
       fs.mkdirSync(outputDirectory, { recursive: true });
       fs.mkdirSync(path.join(outputDirectory, 'pdfs'), { recursive: true });
+
+      // Handle REX service ZIP file extraction
+      let pdfDirectory = null;
+      if (serviceId === 'rex-soo-submission' && additionalFiles.zipFile) {
+        const AdmZip = require('adm-zip');
+        pdfDirectory = path.join(outputDirectory, 'extracted_pdfs');
+        fs.mkdirSync(pdfDirectory, { recursive: true });
+
+        try {
+          console.log(`[${jobId}] 📦 Extracting ZIP file: ${additionalFiles.zipFile.filename}`);
+          const zip = new AdmZip(additionalFiles.zipFile.path);
+          zip.extractAllTo(pdfDirectory, true);
+          console.log(`[${jobId}] ✅ ZIP extracted to: ${pdfDirectory}`);
+
+          const extractedFiles = fs.readdirSync(pdfDirectory);
+          console.log(`[${jobId}] 📄 Extracted ${extractedFiles.length} files:`, extractedFiles);
+        } catch (zipError) {
+          console.error(`[${jobId}] ❌ ZIP extraction failed:`, zipError);
+          throw new Error(`Failed to extract ZIP file: ${zipError.message}`);
+        }
+      }
 
       await DatabaseService.createJob({
         id: jobId,
@@ -50,7 +72,7 @@ class JobQueue {
       const shouldStartImmediately = this.processing.size < this.maxConcurrent;
 
       if (shouldStartImmediately) {
-        this.processJob(jobId, serviceId, scriptName, inputFilePath, outputDirectory, userId).catch(console.error);
+        this.processJob(jobId, serviceId, scriptName, inputFilePath, outputDirectory, userId, pdfDirectory).catch(console.error);
       }
 
       return {
@@ -65,7 +87,7 @@ class JobQueue {
     }
   }
 
-  async processJob(jobId, serviceId, scriptName, inputFilePath, outputDirectory, userId) {
+  async processJob(jobId, serviceId, scriptName, inputFilePath, outputDirectory, userId, pdfDirectory = null) {
     if (this.processing.has(jobId)) {
       return;
     }
@@ -79,7 +101,7 @@ class JobQueue {
 
       const scriptPath = path.join(__dirname, '../../automation_scripts', scriptName);
 
-      const result = await this.runPythonScript(scriptPath, inputFilePath, outputDirectory, jobId, serviceId, userId);
+      const result = await this.runPythonScript(scriptPath, inputFilePath, outputDirectory, jobId, serviceId, userId, pdfDirectory);
 
       if (result.success) {
         const resultFiles = result.resultFiles || [];
@@ -151,7 +173,7 @@ class JobQueue {
     }
   }
 
-  async runPythonScript(scriptPath, inputFilePath, outputDirectory, jobId, serviceId, userId) {
+  async runPythonScript(scriptPath, inputFilePath, outputDirectory, jobId, serviceId, userId, pdfDirectory = null) {
     return new Promise(async (resolve) => {
       console.log(`[${jobId}] 🚀 Starting Python script: ${scriptPath}`);
       console.log(`[${jobId}] 📁 Input file: ${inputFilePath}`);
@@ -164,12 +186,19 @@ class JobQueue {
 
       let args = [scriptPath, inputFilePath, outputDirectory, jobId];
 
+      // For REX service, add PDF directory
+      if (serviceId === 'rex-soo-submission' && pdfDirectory) {
+        args.push(pdfDirectory);
+        console.log(`[${jobId}] 📦 PDF directory: ${pdfDirectory}`);
+      }
+
       // Check if service requires credentials
-      const credentialRequiredServices = ['exp-search'];
+      const credentialRequiredServices = ['exp-search', 'rex-soo-submission'];
       if (credentialRequiredServices.includes(serviceId)) {
         try {
           const portalNameMap = {
-            'exp-search': 'bangladesh_bank_exp'
+            'exp-search': 'bangladesh_bank_exp',
+            'rex-soo-submission': 'epb_export_tracker'
           };
           const portalName = portalNameMap[serviceId];
           const credentials = await DatabaseService.getPortalCredentials(userId, portalName);

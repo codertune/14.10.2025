@@ -288,7 +288,7 @@ export default function ServicePage() {
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-cyan-200 mb-6 shadow-lg">
               <Sparkles className="h-4 w-4 text-cyan-600" />
-              <span className="text-sm font-medium text-gray-700">27+ Automation Services Available</span>
+              <span className="text-sm font-medium text-gray-700">28+ Automation Services Available</span>
             </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 leading-tight">
@@ -297,8 +297,8 @@ export default function ServicePage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-4xl mx-auto leading-relaxed font-light">
-              Complete suite of 27 automation services for Bangladesh commercial processes.
-              From PDF extraction to export documentation, we handle it all.
+              Complete suite of 28 automation services for Bangladesh commercial processes.
+              From PDF extraction to export documentation and REX submission, we handle it all.
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">

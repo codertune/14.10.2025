@@ -16,6 +16,7 @@
     "db:schema": "psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f database-schema.sql"
   },
   "dependencies": {
+    "adm-zip": "^0.5.10",
     "archiver": "^7.0.1",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",

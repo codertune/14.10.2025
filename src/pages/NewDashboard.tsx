@@ -50,7 +50,8 @@ const allServices: Service[] = [
   { id: 'damco-tracking-maersk', name: 'Damco (APM) Tracking', description: 'Track shipments through Damco APM portal', category: 'Tracking', icon: <Truck className="h-5 w-5" /> },
   { id: 'myshipment-tracking', name: 'MyShipment Tracking', description: 'Track shipments through MyShipment MGH platform', category: 'Tracking', icon: <Truck className="h-5 w-5" /> },
   { id: 'egm-download', name: 'EGM Download', description: 'Download Export General Manifest documents', category: 'Tracking', icon: <Truck className="h-5 w-5" /> },
-  { id: 'custom-tracking', name: 'Custom Tracking', description: 'Track customs clearance status and updates', category: 'Tracking', icon: <Truck className="h-5 w-5" /> }
+  { id: 'custom-tracking', name: 'Custom Tracking', description: 'Track customs clearance status and updates', category: 'Tracking', icon: <Truck className="h-5 w-5" /> },
+  { id: 'rex-soo-submission', name: 'REX/SOO Submission', description: 'Automated REX/SOO form submission to EPB Export Tracker', category: 'EPB Export', icon: <Globe className="h-5 w-5" /> }
 ];
 
 type TabType = 'dashboard' | 'profile' | 'credentials' | 'credits' | 'transactions' | 'credit-history';
@@ -121,13 +122,14 @@ export default function NewDashboard() {
     setTotalCredits(0);
     setShowConfirmation(false);
 
-    const servicesRequiringCredentials = ['exp-search'];
+    const servicesRequiringCredentials = ['exp-search', 'rex-soo-submission'];
     const requiresCreds = servicesRequiringCredentials.includes(service.id);
     setCredentialsRequired(requiresCreds);
 
     if (requiresCreds && user) {
       try {
-        const response = await axios.get(`/api/credentials/check/bangladesh_bank_exp?userId=${user.id}`);
+        const portalName = service.id === 'rex-soo-submission' ? 'epb_export_tracker' : 'bangladesh_bank_exp';
+        const response = await axios.get(`/api/credentials/check/${portalName}?userId=${user.id}`);
         setHasCredentials(response.data.exists);
       } catch (error) {
         setHasCredentials(false);

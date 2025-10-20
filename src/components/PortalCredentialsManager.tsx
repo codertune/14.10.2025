@@ -18,6 +18,13 @@ const PORTAL_CONFIGS: PortalConfig[] = [
     displayName: 'Bangladesh Bank EXP Portal',
     description: 'Required for EXP search and management services',
     services: ['exp-search', 'exp-issue', 'exp-correction', 'exp-duplicate-reporting']
+  },
+  {
+    id: 'epb_export_tracker',
+    name: 'epb_export_tracker',
+    displayName: 'EPB Export Tracker Portal',
+    description: 'Required for REX/SOO form submission and export tracking',
+    services: ['rex-soo-submission']
   }
 ];
 
