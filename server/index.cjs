@@ -9,6 +9,7 @@ const { initDatabase, DatabaseService } = require('./database.cjs');
 const BulkUploadService = require('./bulkUploadService.cjs');
 const JobQueue = require('./services/jobQueue.cjs');
 const emailService = require('./emailService.cjs');
+const { RexSooService, setPool } = require('./rexSooService.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -2330,8 +2331,300 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000);
 
+app.post('/api/rex-soo/upload-zip', upload.single('zipFile'), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const zipFile = req.file;
+
+    if (!zipFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'ZIP file is required'
+      });
+    }
+
+    const extractResult = await RexSooService.extractZipFile(zipFile.path, userId);
+
+    res.json({
+      success: true,
+      uploadId: extractResult.uploadId,
+      extractPath: extractResult.extractPath,
+      files: extractResult.files,
+      totalFiles: extractResult.totalFiles,
+      message: `Extracted ${extractResult.totalFiles} PDF files`
+    });
+
+  } catch (error) {
+    console.error('ZIP upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process ZIP file'
+    });
+  }
+});
+
+app.post('/api/rex-soo/upload-csv', upload.single('csvFile'), async (req, res) => {
+  try {
+    const csvFile = req.file;
+
+    if (!csvFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV file is required'
+      });
+    }
+
+    const parseResult = await RexSooService.parseCSVFile(csvFile.path);
+
+    res.json({
+      success: true,
+      rows: parseResult.rows,
+      totalRows: parseResult.totalRows,
+      errors: parseResult.errors,
+      message: `Parsed ${parseResult.totalRows} rows from CSV`
+    });
+
+  } catch (error) {
+    console.error('CSV upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process CSV file'
+    });
+  }
+});
+
+app.post('/api/rex-soo/match-documents', async (req, res) => {
+  try {
+    const { csvRows, pdfFiles } = req.body;
+
+    if (!csvRows || !pdfFiles) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV rows and PDF files are required'
+      });
+    }
+
+    const matches = RexSooService.matchDocuments(csvRows, pdfFiles);
+
+    const matchedCount = matches.filter(m => m.hasAllDocuments).length;
+    const missingCount = matches.length - matchedCount;
+
+    res.json({
+      success: true,
+      matches,
+      matchedCount,
+      missingCount,
+      message: `Matched ${matchedCount} rows, ${missingCount} rows have missing documents`
+    });
+
+  } catch (error) {
+    console.error('Document matching error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to match documents'
+    });
+  }
+});
+
+app.post('/api/rex-soo/submit', async (req, res) => {
+  try {
+    const { userId, csvFileName, zipFileName, matches, creditCost } = req.body;
+
+    if (!userId || !matches) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and matches are required'
+      });
+    }
+
+    const cost = creditCost || 2.0;
+
+    const user = await DatabaseService.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const matchedSubmissions = matches.filter(m => m.hasAllDocuments);
+    const totalCost = matchedSubmissions.length * cost;
+
+    if (user.credits < totalCost && !user.isAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient credits. Required: ${totalCost}, Available: ${user.credits}`
+      });
+    }
+
+    const result = await RexSooService.saveSubmission(
+      userId,
+      csvFileName,
+      zipFileName,
+      matchedSubmissions,
+      cost
+    );
+
+    if (req.body.extractPath) {
+      RexSooService.cleanupTempFiles(req.body.extractPath);
+    }
+
+    res.json({
+      success: true,
+      totalSubmissions: result.totalSubmissions,
+      totalCreditsUsed: result.totalCreditsUsed,
+      submissions: result.submissions,
+      message: `Successfully submitted ${result.totalSubmissions} REX SOO entries`
+    });
+
+  } catch (error) {
+    console.error('REX SOO submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to submit REX SOO data'
+    });
+  }
+});
+
+app.get('/api/rex-soo/submissions/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const result = await RexSooService.getSubmissions(userId, limit, offset);
+
+    res.json({
+      success: true,
+      submissions: result.submissions,
+      total: result.total
+    });
+
+  } catch (error) {
+    console.error('Get submissions error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch submissions'
+    });
+  }
+});
+
+app.get('/api/rex-soo/submission/:submissionId', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    const result = await RexSooService.getSubmissionById(submissionId, userId);
+
+    res.json({
+      success: true,
+      submission: result.submission
+    });
+
+  } catch (error) {
+    console.error('Get submission error:', error);
+    res.status(404).json({
+      success: false,
+      message: error.message || 'Submission not found'
+    });
+  }
+});
+
+app.get('/api/rex-soo/document/:documentId/download', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432'),
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    });
+
+    const result = await pool.query(
+      'SELECT file_path, original_filename FROM rex_documents WHERE id = $1',
+      [documentId]
+    );
+
+    await pool.end();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    const doc = result.rows[0];
+
+    if (!fs.existsSync(doc.file_path)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found'
+      });
+    }
+
+    res.download(doc.file_path, doc.original_filename);
+
+  } catch (error) {
+    console.error('Download document error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to download document'
+    });
+  }
+});
+
+app.delete('/api/rex-soo/submission/:submissionId', async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    await RexSooService.deleteSubmission(submissionId, userId);
+
+    res.json({
+      success: true,
+      message: 'Submission deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete submission'
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  const { Pool } = require('pg');
+  const dbPool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '5432'),
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  });
+  setPool(dbPool);
 });
 
 module.exports = app;

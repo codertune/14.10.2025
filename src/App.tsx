@@ -15,6 +15,7 @@ import EmailVerificationPage from './pages/EmailVerificationPage';
 import Dashboard from './pages/NewDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import UserAccountPage from './pages/UserAccountPage';
+import RexSooSubmissionPage from './pages/RexSooSubmissionPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 interface ProtectedRouteProps {
@@ -87,6 +88,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <UserAccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rex-soo-submission"
+            element={
+              <ProtectedRoute>
+                <RexSooSubmissionPage />
               </ProtectedRoute>
             }
           />
